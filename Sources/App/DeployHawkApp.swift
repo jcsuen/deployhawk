@@ -4,6 +4,7 @@ import SwiftUI
 struct DeployHawkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var store: DeploymentStore
+    @State private var updateChecker: UpdateChecker
 
     init() {
         // Start polling at launch — waiting for the popover to appear would
@@ -11,11 +12,14 @@ struct DeployHawkApp: App {
         let store = MainActor.assumeIsolated { DeploymentStore() }
         _store = State(initialValue: store)
         MainActor.assumeIsolated { store.start() }
+        let checker = MainActor.assumeIsolated { UpdateChecker() }
+        _updateChecker = State(initialValue: checker)
+        MainActor.assumeIsolated { checker.start() }
     }
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarView(store: store)
+            MenuBarView(store: store, updateChecker: updateChecker)
         } label: {
             menuBarLabel
         }

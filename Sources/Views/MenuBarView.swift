@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct MenuBarView: View {
     @Bindable var store: DeploymentStore
+    var updateChecker: UpdateChecker? = nil
     @State private var selectedProject: ProjectItem?
     @State private var showSettings = false
     @AppStorage("sortOrder") private var sortOrder: SortOrder = .recent
@@ -20,6 +21,19 @@ struct MenuBarView: View {
             } else {
                 header
                 Divider()
+                if let checker = updateChecker, checker.updateAvailable, let latest = checker.latestVersion {
+                    Button {
+                        NSWorkspace.shared.open(UpdateChecker.releasesURL)
+                    } label: {
+                        Label("DeployHawk \(latest) available — click to update", systemImage: "arrow.down.circle.fill")
+                            .font(.caption.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(.blue.opacity(0.15))
+                    }
+                    .buttonStyle(.plain)
+                    Divider()
+                }
                 projectList
                 Divider()
                 footer

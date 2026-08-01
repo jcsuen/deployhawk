@@ -87,7 +87,9 @@ enum HTTP {
     static func sendRaw(_ url: URL, method: String, body: Data?, bearer token: String) async throws -> Data {
         var req = URLRequest(url: url)
         req.httpMethod = method
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         if body != nil {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = body
