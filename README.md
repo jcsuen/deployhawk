@@ -16,6 +16,10 @@
   <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue?style=flat-square" alt="PolyForm Noncommercial License">
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/projects.png" width="380" alt="DeployHawk project list">
+</p>
+
 ---
 
 Shipping to Cloudflare Pages, a couple of Workers, a Vercel site, a Railway service and three Hetzner boxes? DeployHawk keeps a hawk in your menu bar so you stop refreshing six dashboards to check "did it build? did it fail? is the server up?"

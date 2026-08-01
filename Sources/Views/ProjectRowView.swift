@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// Set by gen-screenshot.swift — ProgressView renders as a "prohibited" glyph
+/// under ImageRenderer, so static renders use the plain dot instead.
+@MainActor
+enum StaticRender {
+    static var enabled = false
+}
+
 struct StatusBadge: View {
     let state: DeployState
 
@@ -15,7 +22,7 @@ struct StatusBadge: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if state == .building {
+            if state == .building && !StaticRender.enabled {
                 ProgressView().controlSize(.mini)
             } else {
                 Circle().fill(color).frame(width: 7, height: 7)
