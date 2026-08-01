@@ -61,8 +61,8 @@ Inspired by MenuFlare (menuflare.net), boilerplate from ../SessionHawk.
 - [ ] More providers: Fly.io, GitHub Actions, DigitalOcean App Platform
 - [x] Renamed FlareHawk → DeployHawk (provider-neutral), rocket icon
 - [x] Public repo https://github.com/jcsuen/deployhawk + README + PolyForm license + install.sh
-- [ ] First GitHub release (zip of DeployHawk.app) so install.sh's release path works
-- [ ] UpdateChecker (SessionHawk pattern) pointing at GitHub releases
+- [x] v0.1.0 release with DeployHawk.zip — https://github.com/jcsuen/deployhawk/releases/tag/v0.1.0
+- [x] UpdateChecker: GitHub releases API, 24h interval, in-app update banner (DEPLOYHAWK_FAKE_UPDATE to test)
 
 ## Improvements over MenuFlare (the inspiration)
 1. **Multi-provider** — MenuFlare is Cloudflare-only; DeployHawk unifies CF, Vercel, Railway, Hetzner in one list.
