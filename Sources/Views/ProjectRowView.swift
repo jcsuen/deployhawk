@@ -37,15 +37,53 @@ struct StatusBadge: View {
     }
 }
 
+@MainActor
 struct ProviderIcon: View {
     let kind: ProviderKind
 
     var body: some View {
-        Image(systemName: kind.symbol)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(width: 16)
-            .help(kind.displayName)
+        if let logo = Self.logo(for: kind) {
+            Image(nsImage: logo)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 15, height: 15)
+                .foregroundStyle(.primary)
+                .help(kind.displayName)
+        } else {
+            Image(systemName: kind.symbol)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+                .help(kind.displayName)
+        }
+    }
+
+    private static var cache: [ProviderKind: NSImage] = [:]
+
+    /// Brand SVG from the target's resource bundle. Black-on-transparent
+    /// brands (Vercel, Railway) become template images so the system tints
+    /// them for light/dark backgrounds.
+    static func logo(for kind: ProviderKind) -> NSImage? {
+        if let cached = cache[kind] { return cached }
+        guard let url = logoURL(kind), let image = NSImage(contentsOf: url) else { return nil }
+        if kind == .vercel || kind == .railway || kind == .render {
+            image.isTemplate = true
+        }
+        cache[kind] = image
+        return image
+    }
+
+    private static func logoURL(_ kind: ProviderKind) -> URL? {
+        #if SWIFT_PACKAGE
+        if let url = Bundle.module.url(
+            forResource: kind.rawValue, withExtension: "svg", subdirectory: "Resources") {
+            return url
+        }
+        #endif
+        // Standalone builds (gen-screenshot.swift) load straight from the repo.
+        let path = "Sources/Resources/\(kind.rawValue).svg"
+        return FileManager.default.fileExists(atPath: path)
+            ? URL(fileURLWithPath: path) : nil
     }
 }
 

@@ -21,6 +21,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp .build/release/DeployHawk "$APP/Contents/MacOS/DeployHawk"
+# SPM resource bundle (provider logos) — Bundle.module resolves it from
+# Contents/Resources at runtime.
+cp -R .build/release/DeployHawk_DeployHawk.bundle "$APP/Contents/Resources/"
 if [ -f assets/AppIcon.icns ]; then
     cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 fi
