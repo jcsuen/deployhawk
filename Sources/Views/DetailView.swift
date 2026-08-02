@@ -240,20 +240,29 @@ struct DetailView: View {
                     Spacer()
                 }
             }
-            if let series = info.cpuSeries, series.count > 1 {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text("CPU — last hour")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(String(format: "%.1f%%", series.last ?? 0))
-                            .font(.caption.monospacedDigit().weight(.medium))
+            if !info.metrics.isEmpty {
+                Text("Last hour")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
+                    ForEach(info.metrics) { metric in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(metric.name)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(metric.latestFormatted)
+                                    .font(.caption2.monospacedDigit().weight(.medium))
+                            }
+                            SparklineView(values: metric.values)
+                                .frame(height: 28)
+                        }
+                        .padding(6)
+                        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
                     }
-                    SparklineView(values: series)
-                        .frame(height: 36)
                 }
-                .padding(.top, 2)
             }
         }
         .padding(8)

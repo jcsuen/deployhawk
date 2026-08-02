@@ -173,12 +173,13 @@ struct HetznerProvider: ProviderClient {
             rows.append(("Created", created.formatted(date: .abbreviated, time: .omitted)))
         }
 
-        return ProjectDetailInfo(rows: rows, cpuSeries: try? await cpuMetrics(serverId: serverId))
+        return ProjectDetailInfo(rows: rows, metrics: (try? await metrics(serverId: serverId)) ?? [])
     }
 
-    /// Last hour of CPU utilisation, percent per sample. The metrics payload
-    /// nests values as [[unix_ts, "12.34"], …] so decode via JSONSerialization.
-    private func cpuMetrics(serverId: String) async throws -> [Double]? {
+    /// Last hour of CPU / network / disk metrics. The payload nests values as
+    /// [[unix_ts, "12.34"], …] so decode via JSONSerialization. RAM is not
+    /// available — Hetzner has no agentless memory metric.
+    private func metrics(serverId: String) async throws -> [MetricSeries] {
         let iso = ISO8601DateFormatter()
         let end = Date()
         let start = end.addingTimeInterval(-3600)
@@ -186,7 +187,7 @@ struct HetznerProvider: ProviderClient {
             url: Self.base.appendingPathComponent("servers/\(serverId)/metrics"),
             resolvingAgainstBaseURL: false)!
         components.queryItems = [
-            URLQueryItem(name: "type", value: "cpu"),
+            URLQueryItem(name: "type", value: "cpu,network,disk"),
             URLQueryItem(name: "start", value: iso.string(from: start)),
             URLQueryItem(name: "end", value: iso.string(from: end)),
             URLQueryItem(name: "step", value: "60")
@@ -194,14 +195,28 @@ struct HetznerProvider: ProviderClient {
         let data = try await HTTP.sendRaw(components.url!, method: "GET", body: nil, bearer: token)
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let metrics = root["metrics"] as? [String: Any],
-              let series = metrics["time_series"] as? [String: Any],
-              let cpu = series["cpu"] as? [String: Any],
-              let values = cpu["values"] as? [[Any]] else { return nil }
-        let samples = values.compactMap { pair -> Double? in
-            guard pair.count == 2 else { return nil }
-            if let s = pair[1] as? String { return Double(s) }
-            return pair[1] as? Double
+              let series = metrics["time_series"] as? [String: Any] else { return [] }
+
+        func samples(_ key: String) -> [Double]? {
+            guard let entry = series[key] as? [String: Any],
+                  let values = entry["values"] as? [[Any]] else { return nil }
+            let result = values.compactMap { pair -> Double? in
+                guard pair.count == 2 else { return nil }
+                if let s = pair[1] as? String { return Double(s) }
+                return pair[1] as? Double
+            }
+            return result.isEmpty ? nil : result
         }
-        return samples.isEmpty ? nil : samples
+
+        let wanted: [(key: String, name: String, unit: MetricSeries.Unit)] = [
+            ("cpu", "CPU", .percent),
+            ("network.0.bandwidth.in", "Net in", .bytesPerSecond),
+            ("network.0.bandwidth.out", "Net out", .bytesPerSecond),
+            ("disk.0.bandwidth.read", "Disk read", .bytesPerSecond),
+            ("disk.0.bandwidth.write", "Disk write", .bytesPerSecond)
+        ]
+        return wanted.compactMap { spec in
+            samples(spec.key).map { MetricSeries(name: spec.name, unit: spec.unit, values: $0) }
+        }
     }
 }

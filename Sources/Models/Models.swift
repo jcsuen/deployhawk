@@ -134,11 +134,42 @@ struct DeploymentInfo: Identifiable {
 }
 
 /// Provider-specific facts about a project/server, fetched on demand for the
-/// detail view (e.g. Hetzner server specs + CPU metrics).
+/// detail view (e.g. Hetzner server specs + metrics).
 struct ProjectDetailInfo {
     var rows: [(label: String, value: String)] = []
-    /// Recent CPU utilisation samples (percent, oldest first).
-    var cpuSeries: [Double]?
+    var metrics: [MetricSeries] = []
+}
+
+/// One metric time series (oldest first) for a sparkline.
+struct MetricSeries: Identifiable {
+    enum Unit {
+        case percent
+        case bytesPerSecond
+        case perSecond
+    }
+
+    let name: String
+    let unit: Unit
+    let values: [Double]
+
+    var id: String { name }
+
+    var latestFormatted: String {
+        format(values.last ?? 0)
+    }
+
+    func format(_ value: Double) -> String {
+        switch unit {
+        case .percent:
+            return String(format: "%.1f%%", value)
+        case .bytesPerSecond:
+            if value >= 1_048_576 { return String(format: "%.1f MB/s", value / 1_048_576) }
+            if value >= 1024 { return String(format: "%.1f KB/s", value / 1024) }
+            return String(format: "%.0f B/s", value)
+        case .perSecond:
+            return String(format: "%.0f/s", value)
+        }
+    }
 }
 
 /// Rich per-deployment info fetched on demand for the drill-down view.
