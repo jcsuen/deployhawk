@@ -133,6 +133,14 @@ struct DeploymentInfo: Identifiable {
     var meta: [String: String] = [:]
 }
 
+/// Provider-specific facts about a project/server, fetched on demand for the
+/// detail view (e.g. Hetzner server specs + CPU metrics).
+struct ProjectDetailInfo {
+    var rows: [(label: String, value: String)] = []
+    /// Recent CPU utilisation samples (percent, oldest first).
+    var cpuSeries: [Double]?
+}
+
 /// Rich per-deployment info fetched on demand for the drill-down view.
 struct DeploymentDetail {
     var buildCommand: String?

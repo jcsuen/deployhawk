@@ -109,4 +109,99 @@ struct HetznerProvider: ProviderClient {
             Self.base.appendingPathComponent("servers/\(serverId)/actions/\(actionId)"),
             method: "POST", body: nil, bearer: token)
     }
+
+    // MARK: - Server detail (specs + CPU metrics)
+
+    private struct ServerResponse: Decodable {
+        let server: Server
+
+        struct Server: Decodable {
+            let name: String
+            let created: Date?
+            let publicNet: PublicNet?
+            let serverType: ServerType?
+            let datacenter: ServersResponse.Server.Datacenter?
+            let image: Image?
+            let primaryDiskSize: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case name, created, datacenter, image
+                case publicNet = "public_net"
+                case serverType = "server_type"
+                case primaryDiskSize = "primary_disk_size"
+            }
+
+            struct PublicNet: Decodable {
+                let ipv4: IP?
+                let ipv6: IP?
+                struct IP: Decodable {
+                    let ip: String?
+                }
+            }
+            struct ServerType: Decodable {
+                let name: String?
+                let cores: Int?
+                let memory: Double?
+                let disk: Int?
+            }
+            struct Image: Decodable {
+                let description: String?
+                let name: String?
+            }
+        }
+    }
+
+    func projectDetail(for project: ProjectItem) async throws -> ProjectDetailInfo? {
+        guard let serverId = project.meta["serverId"] else { return nil }
+        let server = try await HTTP.get(
+            Self.base.appendingPathComponent("servers/\(serverId)"),
+            bearer: token, as: ServerResponse.self).server
+
+        var rows: [(label: String, value: String)] = []
+        if let ip = server.publicNet?.ipv4?.ip { rows.append(("IPv4", ip)) }
+        if let ip = server.publicNet?.ipv6?.ip { rows.append(("IPv6", ip)) }
+        if let type = server.serverType {
+            let cores = type.cores.map { "\($0) vCPU" }
+            let memory = type.memory.map { "\(Int($0)) GB RAM" }
+            let disk = (server.primaryDiskSize ?? type.disk).map { "\($0) GB disk" }
+            let spec = [cores, memory, disk].compactMap { $0 }.joined(separator: " · ")
+            rows.append(("Type", "\(type.name ?? "?") — \(spec)"))
+        }
+        if let os = server.image?.description ?? server.image?.name { rows.append(("Image", os)) }
+        if let location = server.datacenter?.location?.name { rows.append(("Datacenter", location)) }
+        if let created = server.created {
+            rows.append(("Created", created.formatted(date: .abbreviated, time: .omitted)))
+        }
+
+        return ProjectDetailInfo(rows: rows, cpuSeries: try? await cpuMetrics(serverId: serverId))
+    }
+
+    /// Last hour of CPU utilisation, percent per sample. The metrics payload
+    /// nests values as [[unix_ts, "12.34"], …] so decode via JSONSerialization.
+    private func cpuMetrics(serverId: String) async throws -> [Double]? {
+        let iso = ISO8601DateFormatter()
+        let end = Date()
+        let start = end.addingTimeInterval(-3600)
+        var components = URLComponents(
+            url: Self.base.appendingPathComponent("servers/\(serverId)/metrics"),
+            resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "type", value: "cpu"),
+            URLQueryItem(name: "start", value: iso.string(from: start)),
+            URLQueryItem(name: "end", value: iso.string(from: end)),
+            URLQueryItem(name: "step", value: "60")
+        ]
+        let data = try await HTTP.sendRaw(components.url!, method: "GET", body: nil, bearer: token)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let metrics = root["metrics"] as? [String: Any],
+              let series = metrics["time_series"] as? [String: Any],
+              let cpu = series["cpu"] as? [String: Any],
+              let values = cpu["values"] as? [[Any]] else { return nil }
+        let samples = values.compactMap { pair -> Double? in
+            guard pair.count == 2 else { return nil }
+            if let s = pair[1] as? String { return Double(s) }
+            return pair[1] as? Double
+        }
+        return samples.isEmpty ? nil : samples
+    }
 }

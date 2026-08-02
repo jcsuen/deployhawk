@@ -15,6 +15,7 @@ struct DetailView: View {
     // which must never happen per body evaluation (main-thread file IO).
     @State private var projectActions: [ProjectAction] = []
     @State private var selectedDeployment: DeploymentInfo?
+    @State private var projectInfo: ProjectDetailInfo?
 
     var body: some View {
         if let selected = selectedDeployment {
@@ -38,6 +39,9 @@ struct DetailView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
+                    if let info = projectInfo {
+                        infoSection(info)
+                    }
                     if loading {
                         HStack {
                             Spacer()
@@ -46,10 +50,12 @@ struct DetailView: View {
                         }
                         .padding(.vertical, 20)
                     } else if deployments.isEmpty {
-                        Text(project.provider == .hetzner ? "Hetzner servers have no deployment history." : "No deployments found.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.vertical, 12)
+                        if project.provider != .hetzner {
+                            Text("No deployments found.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 12)
+                        }
                     } else {
                         Text("Recent deployments")
                             .font(.caption.weight(.semibold))
@@ -72,7 +78,9 @@ struct DetailView: View {
     private func load() async {
         loading = true
         projectActions = store.actions(for: project)
+        async let infoTask = try? store.projectDetail(for: project)
         deployments = (try? await store.deployments(for: project)) ?? []
+        projectInfo = await infoTask
         loading = false
     }
 
@@ -213,6 +221,46 @@ struct DetailView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary, lineWidth: 1))
     }
 
+    private func infoSection(_ info: ProjectDetailInfo) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Server")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ForEach(info.rows, id: \.label) { row in
+                HStack(spacing: 6) {
+                    Text(row.label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 80, alignment: .leading)
+                    Text(row.value)
+                        .font(.caption)
+                        .textSelection(.enabled)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                }
+            }
+            if let series = info.cpuSeries, series.count > 1 {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("CPU — last hour")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(String(format: "%.1f%%", series.last ?? 0))
+                            .font(.caption.monospacedDigit().weight(.medium))
+                    }
+                    SparklineView(values: series)
+                        .frame(height: 36)
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary, lineWidth: 1))
+    }
+
     private func actionButton(_ title: String, systemImage: String, action: @escaping () async throws -> Void) -> some View {
         Button {
             Task {
@@ -233,6 +281,38 @@ struct DetailView: View {
         .buttonStyle(.bordered)
         .controlSize(.mini)
         .disabled(busy)
+    }
+}
+
+/// Minimal line chart for metric series — no axes, filled area under the line.
+struct SparklineView: View {
+    let values: [Double]
+
+    var body: some View {
+        GeometryReader { geo in
+            let maxValue = max(values.max() ?? 1, 1)
+            let stepX = geo.size.width / CGFloat(max(values.count - 1, 1))
+            let points = values.enumerated().map { index, value in
+                CGPoint(
+                    x: CGFloat(index) * stepX,
+                    y: geo.size.height * (1 - CGFloat(value / maxValue) * 0.9))
+            }
+            let line = Path { path in
+                guard let first = points.first else { return }
+                path.move(to: first)
+                for point in points.dropFirst() { path.addLine(to: point) }
+            }
+            let area = Path { path in
+                guard let first = points.first, let last = points.last else { return }
+                path.move(to: CGPoint(x: first.x, y: geo.size.height))
+                path.addLine(to: first)
+                for point in points.dropFirst() { path.addLine(to: point) }
+                path.addLine(to: CGPoint(x: last.x, y: geo.size.height))
+                path.closeSubpath()
+            }
+            area.fill(Color.accentColor.opacity(0.15))
+            line.stroke(Color.accentColor, lineWidth: 1.5)
+        }
     }
 }
 

@@ -23,6 +23,9 @@ protocol ProviderClient: Sendable {
 
     /// On-demand drill-down: build config, logs, per-deployment links.
     func deploymentDetail(_ deployment: DeploymentInfo, project: ProjectItem) async throws -> DeploymentDetail
+
+    /// Provider-specific project facts for the detail view (specs, metrics).
+    func projectDetail(for project: ProjectItem) async throws -> ProjectDetailInfo?
 }
 
 extension ProviderClient {
@@ -34,6 +37,7 @@ extension ProviderClient {
     func deploymentDetail(_ deployment: DeploymentInfo, project: ProjectItem) async throws -> DeploymentDetail {
         DeploymentDetail()
     }
+    func projectDetail(for project: ProjectItem) async throws -> ProjectDetailInfo? { nil }
 }
 
 enum ProviderFactory {

@@ -251,6 +251,11 @@ final class DeploymentStore {
         await refresh()
     }
 
+    func projectDetail(for item: ProjectItem) async throws -> ProjectDetailInfo? {
+        guard let client = client(for: item) else { return nil }
+        return try await client.projectDetail(for: item)
+    }
+
     func deploymentDetail(_ deployment: DeploymentInfo, project: ProjectItem) async throws -> DeploymentDetail {
         guard let client = client(for: project) else { return DeploymentDetail() }
         return try await client.deploymentDetail(deployment, project: project)
