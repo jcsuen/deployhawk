@@ -7,33 +7,55 @@ enum StaticRender {
     static var enabled = false
 }
 
+/// Status badge tuned for translucent menu bar backdrops (SessionHawk style):
+/// solid fills with guaranteed-contrast text for attention states, a subtle
+/// neutral pill with a colored dot for the rest — never colored text over
+/// colored translucency.
 struct StatusBadge: View {
     let state: DeployState
 
-    private var color: Color {
+    var body: some View {
+        HStack(spacing: 5) {
+            if state == .building && !StaticRender.enabled {
+                ProgressView()
+                    .controlSize(.mini)
+                    .tint(.black)
+            } else if let dot = dotColor {
+                Circle().fill(dot).frame(width: 7, height: 7)
+            }
+            Text(state.label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(textColor)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(background, in: Capsule())
+    }
+
+    private var background: Color {
         switch state {
         case .building: return .orange
-        case .success, .running: return .green
         case .failure: return .red
-        case .stopped, .canceled: return .gray
-        case .unknown: return .secondary.opacity(0.5)
+        default: return Color.primary.opacity(0.08)
         }
     }
 
-    var body: some View {
-        HStack(spacing: 4) {
-            if state == .building && !StaticRender.enabled {
-                ProgressView().controlSize(.mini)
-            } else {
-                Circle().fill(color).frame(width: 7, height: 7)
-            }
-            Text(state.label)
-                .font(.caption2.weight(.medium))
+    private var textColor: Color {
+        switch state {
+        case .building: return .black
+        case .failure: return .white
+        case .success, .running: return .primary
+        case .stopped, .canceled, .unknown: return .secondary
         }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(color.opacity(0.15), in: Capsule())
-        .foregroundStyle(color)
+    }
+
+    private var dotColor: Color? {
+        switch state {
+        case .success, .running: return .green
+        case .stopped, .canceled: return .secondary
+        case .building: return .black
+        case .failure, .unknown: return nil
+        }
     }
 }
 
