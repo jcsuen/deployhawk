@@ -50,7 +50,100 @@ final class DeploymentStore {
     }
 
     func start() {
+        // DEPLOYHAWK_DEMO=1 runs a scripted deployment lifecycle with fake
+        // projects through the real notification/menu-bar pipeline.
+        if ProcessInfo.processInfo.environment["DEPLOYHAWK_DEMO"] != nil {
+            Task { await runDemoLoop() }
+            return
+        }
         scheduleNextPoll(after: 0.1)
+    }
+
+    // MARK: - Demo mode
+
+    private func runDemoLoop() async {
+        let demoAccount = UUID()
+
+        func demoItem(
+            _ provider: ProviderKind, _ name: String, _ state: DeployState,
+            detail: String? = nil, branch: String? = nil, message: String? = nil,
+            activity: Date, buildStart: Date? = nil, duration: TimeInterval? = nil
+        ) -> ProjectItem {
+            ProjectItem(
+                providerAccountId: demoAccount, provider: provider, name: name,
+                detail: detail, state: state, lastActivity: activity,
+                branch: branch, commitMessage: message,
+                buildStart: buildStart, buildDuration: duration,
+                previewURL: nil, dashboardURL: nil, meta: [:])
+        }
+
+        func apply(_ items: [ProjectItem]) {
+            notifyTransitions(items)
+            projects = items
+            lastRefresh = Date()
+        }
+
+        let base = Date()
+        var workerDeployedAt = base
+
+        while !Task.isCancelled {
+            let steady = { (now: Date) -> [ProjectItem] in
+                [
+                    demoItem(.cloudflare, "api-gateway", .running, detail: "Worker",
+                             activity: workerDeployedAt),
+                    demoItem(.hetzner, "db1", .running, detail: "cx32 · fsn1",
+                             activity: base.addingTimeInterval(-86_400))
+                ]
+            }
+
+            // 1 — steady state
+            apply(steady(Date()) + [
+                demoItem(.vercel, "dashboard", .success, branch: "main",
+                         message: "Fix auth redirect", activity: base, duration: 34)
+            ])
+            try? await Task.sleep(for: .seconds(5))
+
+            // 2 — a build starts: menu bar pulses orange
+            let buildStart = Date()
+            apply(steady(Date()) + [
+                demoItem(.vercel, "dashboard", .building, branch: "main",
+                         message: "Add billing page", activity: buildStart, buildStart: buildStart)
+            ])
+            try? await Task.sleep(for: .seconds(20))
+
+            // 3 — build succeeds: notification fires
+            apply(steady(Date()) + [
+                demoItem(.vercel, "dashboard", .success, branch: "main",
+                         message: "Add billing page", activity: buildStart,
+                         duration: Date().timeIntervalSince(buildStart))
+            ])
+            try? await Task.sleep(for: .seconds(6))
+
+            // 4 — instant Worker deploy: notification + green menu bar flash
+            workerDeployedAt = Date()
+            apply(steady(Date()) + [
+                demoItem(.vercel, "dashboard", .success, branch: "main",
+                         message: "Add billing page", activity: buildStart, duration: 21)
+            ])
+            try? await Task.sleep(for: .seconds(10))
+
+            // 5 — another build starts, then fails: red badge + notification
+            let failStart = Date()
+            apply(steady(Date()) + [
+                demoItem(.railway, "postgres-sync", .building, branch: "main",
+                         message: "Bump pg driver", activity: failStart, buildStart: failStart),
+                demoItem(.vercel, "dashboard", .success, branch: "main",
+                         message: "Add billing page", activity: buildStart, duration: 21)
+            ])
+            try? await Task.sleep(for: .seconds(12))
+            apply(steady(Date()) + [
+                demoItem(.railway, "postgres-sync", .failure, branch: "main",
+                         message: "Bump pg driver", activity: failStart, duration: 12),
+                demoItem(.vercel, "dashboard", .success, branch: "main",
+                         message: "Add billing page", activity: buildStart, duration: 21)
+            ])
+            try? await Task.sleep(for: .seconds(15))
+        }
     }
 
     // MARK: - Account management
