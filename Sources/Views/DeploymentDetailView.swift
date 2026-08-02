@@ -29,8 +29,6 @@ struct DeploymentDetailView: View {
                 .padding(12)
             }
         }
-        .frame(width: 360)
-        .frame(minHeight: 200, maxHeight: 560)
         .task {
             loadingLogs = true
             detail = (try? await store.deploymentDetail(deployment, project: project)) ?? DeploymentDetail()

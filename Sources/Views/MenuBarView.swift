@@ -9,6 +9,8 @@ struct MenuBarView: View {
     @AppStorage("sortOrder") private var sortOrder: SortOrder = .recent
     @AppStorage("compactMode") private var compactMode = false
     @State private var searchText = ""
+    /// Empty set = show all providers.
+    @State private var providerFilter: Set<ProviderKind> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,8 +41,10 @@ struct MenuBarView: View {
                 footer
             }
         }
-        .frame(width: 360)
-        .frame(minHeight: 120, maxHeight: 560)
+        // One fixed window size for every screen — MenuBarExtra re-measures on
+        // each open, and min/max ranges collapse to the minimum until a
+        // navigation forces a relayout (the "tiny window on reopen" bug).
+        .frame(width: 360, height: 520)
     }
 
     // MARK: - Header
@@ -97,9 +101,21 @@ struct MenuBarView: View {
 
     // MARK: - List
 
+    /// Providers that actually have projects right now, in enum order.
+    private var activeProviders: [ProviderKind] {
+        let present = Set(store.projects.map(\.provider))
+        return ProviderKind.allCases.filter { present.contains($0) }
+    }
+
     private var filteredProjects: [ProjectItem] {
-        guard !searchText.isEmpty else { return sortedProjects }
-        return sortedProjects.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        var result = sortedProjects
+        if !providerFilter.isEmpty {
+            result = result.filter { providerFilter.contains($0.provider) }
+        }
+        if !searchText.isEmpty {
+            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+        return result
     }
 
     private var sortedProjects: [ProjectItem] {
@@ -119,6 +135,22 @@ struct MenuBarView: View {
 
     private var projectList: some View {
         VStack(spacing: 0) {
+            if activeProviders.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(activeProviders) { kind in
+                        providerChip(kind)
+                    }
+                    Spacer()
+                    if !providerFilter.isEmpty {
+                        Button("All") { providerFilter = [] }
+                            .buttonStyle(.borderless)
+                            .font(.caption2)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                Divider()
+            }
             if store.projects.count > 8 {
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass")
@@ -175,6 +207,35 @@ struct MenuBarView: View {
                 .padding(10)
             }
         }
+    }
+
+    private func providerChip(_ kind: ProviderKind) -> some View {
+        let isSelected = providerFilter.contains(kind)
+        let count = store.projects.filter { $0.provider == kind }.count
+        return Button {
+            // Tap toggles; selecting the only remaining filter clears back to All.
+            if isSelected {
+                providerFilter.remove(kind)
+            } else {
+                providerFilter.insert(kind)
+            }
+        } label: {
+            HStack(spacing: 4) {
+                ProviderIcon(kind: kind)
+                Text("\(count)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(
+                isSelected ? Color.accentColor.opacity(0.25) : Color.primary.opacity(0.06),
+                in: Capsule())
+            .overlay(Capsule().strokeBorder(
+                isSelected ? Color.accentColor.opacity(0.6) : .clear, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help(kind.displayName)
     }
 
     private var errorBanners: [(UUID, String)] {
@@ -236,5 +297,6 @@ struct MenuBarView: View {
                 .font(.caption)
         }
         .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

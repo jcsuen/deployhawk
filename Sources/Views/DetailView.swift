@@ -70,8 +70,6 @@ struct DetailView: View {
                 .padding(12)
             }
         }
-        .frame(width: 360)
-        .frame(minHeight: 160, maxHeight: 560)
         .task { await load() }
     }
 

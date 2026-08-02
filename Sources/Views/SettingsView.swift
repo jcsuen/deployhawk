@@ -43,8 +43,6 @@ struct SettingsView: View {
                 .padding(12)
             }
         }
-        .frame(width: 360)
-        .frame(minHeight: 200, maxHeight: 560)
     }
 
     // MARK: - Accounts
