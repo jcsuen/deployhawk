@@ -14,10 +14,16 @@ final class DeploymentStore {
     var isConfigured: Bool { !providerAccounts.isEmpty }
     var buildingCount: Int { projects.filter { $0.state == .building }.count }
     var failureCount: Int { projects.filter { $0.state == .failure }.count }
+    /// True briefly after an instant deploy (Workers) — drives a menu bar flash.
+    var deployFlash = false
+    private var flashGeneration = 0
 
     private var pollTask: Task<Void, Never>?
     /// Session cache so the Keychain isn't consulted on every poll.
     private var tokenCache: [UUID: String] = [:]
+    /// Last seen activity timestamp per project — detects "instant" deploys
+    /// (Workers uploads) that never pass through a building state.
+    private var previousActivity: [String: Date] = [:]
     // Last known state per project id, to notify only on transitions.
     private var previousStates: [String: DeployState] = [:]
     /// Project ids excluded from notifications.
@@ -204,6 +210,23 @@ final class DeploymentStore {
         for item in newItems {
             let old = previousStates[item.id]
             previousStates[item.id] = item.state
+            let oldActivity = previousActivity[item.id]
+            previousActivity[item.id] = item.lastActivity
+
+            // Instant deploys (Workers uploads): no building phase, just a
+            // jump in the activity timestamp of an already-known project.
+            if old != .building, item.state != .building, item.state != .failure,
+               let oldA = oldActivity, let newA = item.lastActivity, newA > oldA.addingTimeInterval(1) {
+                flashDeploy()
+                if notifySuccess, !mutedProjects.contains(item.id) {
+                    NotificationManager.shared.send(
+                        title: "\(item.name) deployed",
+                        body: "\(item.provider.displayName)\(item.detail.map { " \($0)" } ?? "") updated just now",
+                        url: item.previewURL.flatMap(URL.init(string:)) ?? item.dashboardURL)
+                }
+                continue
+            }
+
             guard old == .building, item.state != .building,
                   !mutedProjects.contains(item.id) else { continue }
             switch item.state {
@@ -222,6 +245,17 @@ final class DeploymentStore {
             default:
                 break
             }
+        }
+    }
+
+    /// Light the menu bar green for 90 s after an instant deploy.
+    private func flashDeploy() {
+        flashGeneration += 1
+        let generation = flashGeneration
+        deployFlash = true
+        Task {
+            try? await Task.sleep(for: .seconds(90))
+            if flashGeneration == generation { deployFlash = false }
         }
     }
 
