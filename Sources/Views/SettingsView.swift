@@ -43,6 +43,7 @@ struct SettingsView: View {
                 .padding(12)
             }
         }
+        .task { refreshCLISources() }
     }
 
     // MARK: - Accounts
@@ -71,6 +72,7 @@ struct SettingsView: View {
                     Spacer()
                     Button {
                         store.removeAccount(account)
+                        refreshCLISources()
                     } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.red)
@@ -84,14 +86,21 @@ struct SettingsView: View {
         }
     }
 
-    private var cliImports: [CLICredentialSource] {
+    // Detected off-main in refreshCLISources() — detection may exec `gh auth
+    // token`, which must never run during body evaluation.
+    @State private var cliSources: [CLICredentialSource] = []
+
+    private func refreshCLISources() {
         let connected = Set(store.providerAccounts.map(\.kind))
-        return CLIImporter.detect().filter { !connected.contains($0.kind) }
+        Task.detached {
+            let sources = CLIImporter.detect().filter { !connected.contains($0.kind) }
+            await MainActor.run { cliSources = sources }
+        }
     }
 
     @ViewBuilder
     private var importFromCLI: some View {
-        let sources = cliImports
+        let sources = cliSources
         if !sources.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Found on this Mac")
@@ -133,6 +142,7 @@ struct SettingsView: View {
         Task {
             do {
                 try await store.importFromCLI(source)
+                refreshCLISources()
             } catch {
                 connectError = "\(source.cliName): \(error.localizedDescription)"
             }

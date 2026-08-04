@@ -58,7 +58,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .render:
             return "dashboard.render.com → Account Settings → API Keys."
         case .github:
-            return "github.com/settings/tokens — classic token with repo scope (or just be logged into the gh CLI). Shows workflow runs across your recently pushed repos."
+            return "Easiest: install/login the gh CLI and use Connect above. Manual token: github.com/settings/tokens — fine-grained with Actions:Read-Write + Contents:Read + Metadata:Read on your repos, or a classic token with the repo scope. Read-only works for monitoring; write enables Re-run."
         case .fly:
             return "Run `fly tokens create org` (or be logged into flyctl). Shows app status and release history."
         case .digitalocean:

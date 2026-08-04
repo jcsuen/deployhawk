@@ -46,6 +46,14 @@ enum CLIImporter {
             CLICredentialSource(
                 kind: .github, cliName: "gh CLI",
                 path: home(".config/gh/hosts.yml"), live: false),
+            // Newer gh stores the token in the macOS keyring, not hosts.yml —
+            // these entries shell out to `gh auth token` instead.
+            CLICredentialSource(
+                kind: .github, cliName: "gh CLI",
+                path: "/opt/homebrew/bin/gh", live: false),
+            CLICredentialSource(
+                kind: .github, cliName: "gh CLI",
+                path: "/usr/local/bin/gh", live: false),
             CLICredentialSource(
                 kind: .fly, cliName: "flyctl",
                 path: home(".fly/config.yml"), live: false),
@@ -65,12 +73,17 @@ enum CLIImporter {
             guard !seen.contains(source.kind),
                   FileManager.default.fileExists(atPath: source.path),
                   readToken(from: source) != nil else { return false }
+            // (binary-backed entries are validated by actually producing a token)
             seen.insert(source.kind)
             return true
         }
     }
 
     static func readToken(from source: CLICredentialSource) -> String? {
+        // Binary-backed sources (gh in keyring mode) execute the CLI itself.
+        if source.kind == .github, !source.path.hasSuffix("hosts.yml") {
+            return runCommand(source.path, ["auth", "token"])
+        }
         guard let content = try? String(contentsOfFile: source.path, encoding: .utf8) else { return nil }
         switch source.kind {
         case .cloudflare:
@@ -103,6 +116,27 @@ enum CLIImporter {
     /// `"key": "value"` (JSON) — first occurrence, regardless of nesting.
     private static func jsonValue(_ key: String, in content: String) -> String? {
         firstMatch("\"\(key)\"\\s*:\\s*\"([^\"]+)\"", in: content)
+    }
+
+    /// Run a CLI and return trimmed stdout (nil on failure/empty). Blocks —
+    /// callers must not be on the main thread.
+    private static func runCommand(_ path: String, _ args: [String]) -> String? {
+        guard FileManager.default.isExecutableFile(atPath: path) else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = args
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch { return nil }
+        guard process.terminationStatus == 0,
+              let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !output.isEmpty else { return nil }
+        return output
     }
 
     private static func firstMatch(_ pattern: String, in content: String) -> String? {

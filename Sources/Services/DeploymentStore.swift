@@ -168,7 +168,9 @@ final class DeploymentStore {
 
     /// Connect straight from a detected CLI credential file.
     func importFromCLI(_ source: CLICredentialSource) async throws {
-        guard let token = CLIImporter.readToken(from: source) else {
+        // Off-main: reading may exec the CLI (gh keyring mode).
+        let token = await Task.detached { CLIImporter.readToken(from: source) }.value
+        guard let token else {
             throw ProviderError.message("Could not read a token from \(source.cliName)")
         }
         try await addAccount(
