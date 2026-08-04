@@ -216,6 +216,20 @@ struct SettingsView: View {
 
             Toggle("Notify on deploy success", isOn: $notifySuccess)
             Toggle("Notify on deploy failure", isOn: $notifyFailure)
+            HStack(spacing: 4) {
+                Text("DeployHawk \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Text("·").font(.caption2).foregroundStyle(.tertiary)
+                Button("GitHub") {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/jcsuen/deployhawk")!)
+                }
+                .buttonStyle(.plain)
+                .font(.caption2)
+                .foregroundStyle(Color.accentColor)
+            }
+            .padding(.top, 4)
+
             Toggle("Launch at login", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, enabled in
                     do {

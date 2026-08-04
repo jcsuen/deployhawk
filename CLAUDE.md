@@ -1,8 +1,12 @@
 # DeployHawk
 
-macOS menu bar app monitoring deployments across **Cloudflare (Workers + Pages), Vercel, Railway, Hetzner Cloud, Netlify, and Render**. Swift Package Manager executable, SwiftUI `MenuBarExtra(.window)`, zero external dependencies, macOS 14+.
+macOS menu bar app monitoring deployments across **Cloudflare (Workers + Pages), Vercel, Railway, Hetzner Cloud, Netlify, Render, Fly.io, GitHub Actions, and DigitalOcean App Platform**. Swift Package Manager executable, SwiftUI `MenuBarExtra(.window)`, zero external dependencies, macOS 14+.
 
 Inspired by MenuFlare (menuflare.net, Cloudflare-only); architecture boilerplate from `../SessionHawk`.
+
+## Releasing
+
+Push a tag: `git tag v0.X.Y && git push origin v0.X.Y` — `.github/workflows/release.yml` builds on a macOS runner, zips, and creates the GitHub release (VERSION is stamped from the tag; `make-app-bundle.sh` skips the /Applications install when `CI=true`). The in-app `UpdateChecker` picks new releases up within 24 h.
 
 ## Build & run
 
@@ -27,6 +31,10 @@ No tests yet; verify by running the app with real provider tokens.
   - `HetznerProvider` — servers as items (running/stopped/initializing); no deployment history; power on/off/reboot as project actions.
   - `NetlifyProvider` — sites with `published_deploy`; rollback = publish-deploy restore; Trigger Build action.
   - `RenderProvider` — services (list endpoints wrap items as `{service:…}`/`{deploy:…}` with cursors); per-service latest deploy in a task group; rollback + Deploy Latest action.
+  - `GitHubProvider` — Actions workflow runs across the 15 most recently pushed repos (`/user/repos?sort=pushed` then per-repo `/actions/runs`); repos without runs are skipped; retry = full re-run.
+  - `FlyProvider` — GraphQL (api.fly.io/graphql); apps + release history; no actions yet (restart would need the Machines API).
+  - `DigitalOceanProvider` — App Platform `/v2/apps` (uses `in_progress_deployment` over `active_deployment` for live state); retry/deploy = POST new deployment with `force_build`.
+  - `RailwayProvider` renders **one row per service** (project → services), falling back to project-level when a project has no services; deployments/restart are service-scoped via `meta["serviceId"]`.
 - `Sources/Services/CLIImporter.swift` — detects logged-in provider CLIs (wrangler, Vercel/Netlify/Railway CLIs, hcloud) and extracts tokens via regex from their TOML/JSON configs. Wrangler is a **live** source: its OAuth session token rotates ~hourly, so accounts with `tokenSourcePath` re-read the file on every poll (`DeploymentStore.currentToken`) instead of trusting the Keychain copy. OAuth proper is not viable for most providers (only Netlify/Vercel offer third-party OAuth) — CLI import is the low-friction path.
 - `Sources/Services/` — `DeploymentStore` (`@Observable @MainActor`; parallel per-account refresh via task group, per-account `errors` dict, keeps stale items when an account errors; state-transition detection → notifications; adaptive poll: 5 s while building, else `pollInterval` default 60 s, via cancellable `Task.sleep` loop — NOT Timer, whose `@Sendable` closure can't capture weak self under Swift 5.9), `Keychain.swift`, `NotificationManager.swift` (osascript fallback when bundle-less; click opens deployment URL).
 - `Sources/Views/` — `MenuBarView` (in-popover navigation: list ⇄ detail ⇄ settings; onboarding when no accounts), `ProjectRowView` (+`StatusBadge`, `ProviderIcon`; 1 s ticker for live build duration), `DetailView` (history, retry/rollback buttons gated by `canRetry`/`canRollback`), `SettingsView` (segmented provider picker + SecureField token connect flow, poll interval, notification toggles, SMAppService launch-at-login).

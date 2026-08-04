@@ -24,6 +24,9 @@ final class DeploymentStore {
     /// Last seen activity timestamp per project — detects "instant" deploys
     /// (Workers uploads) that never pass through a building state.
     private var previousActivity: [String: Date] = [:]
+    /// Consecutive failed polls per account — a banner only shows from the
+    /// second consecutive failure, so transient network blips stay silent.
+    private var failureStreaks: [UUID: Int] = [:]
     // Last known state per project id, to notify only on transitions.
     private var previousStates: [String: DeployState] = [:]
     /// Project ids excluded from notifications.
@@ -247,26 +250,43 @@ final class DeploymentStore {
             clients.append((account, ProviderFactory.client(for: account, token: token)))
         }
 
-        var allItems: [ProjectItem] = []
-        var newErrors: [UUID: String] = [:]
-        await withTaskGroup(of: (UUID, Result<[ProjectItem], Error>).self) { group in
+        // Collect inside the group, mutate actor state only afterwards
+        // (Swift 5.9 rejects isolated-property mutation in the group closure).
+        let results = await withTaskGroup(
+            of: (UUID, Result<[ProjectItem], Error>).self,
+            returning: [(UUID, Result<[ProjectItem], Error>)].self
+        ) { group in
             for (account, client) in clients {
                 group.addTask {
                     do { return (account.id, .success(try await client.projects())) }
                     catch { return (account.id, .failure(error)) }
                 }
             }
-            for await (accountId, result) in group {
-                switch result {
-                case .success(let items):
-                    allItems += items
-                case .failure(let error):
-                    let account = clients.first { $0.0.id == accountId }?.0
-                    if account?.tokenSourcePath != nil, case ProviderError.invalidToken = error {
-                        newErrors[accountId] = "CLI session expired — run the \(account?.kind.displayName ?? "") CLI once (e.g. `wrangler whoami`) to refresh it."
-                    } else {
-                        newErrors[accountId] = error.localizedDescription
-                    }
+            var collected: [(UUID, Result<[ProjectItem], Error>)] = []
+            for await result in group { collected.append(result) }
+            return collected
+        }
+
+        var allItems: [ProjectItem] = []
+        var newErrors: [UUID: String] = [:]
+        for (accountId, result) in results {
+            switch result {
+            case .success(let items):
+                failureStreaks[accountId] = 0
+                allItems += items
+            case .failure(let error):
+                let streak = (failureStreaks[accountId] ?? 0) + 1
+                failureStreaks[accountId] = streak
+                // First failure: keep last known items, stay silent.
+                guard streak >= 2 else {
+                    allItems += projects.filter { $0.providerAccountId == accountId }
+                    continue
+                }
+                let account = clients.first { $0.0.id == accountId }?.0
+                if account?.tokenSourcePath != nil, case ProviderError.invalidToken = error {
+                    newErrors[accountId] = "CLI session expired — run the \(account?.kind.displayName ?? "") CLI once (e.g. `wrangler whoami`) to refresh it."
+                } else {
+                    newErrors[accountId] = error.localizedDescription
                 }
             }
         }
