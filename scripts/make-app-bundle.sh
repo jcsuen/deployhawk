@@ -11,6 +11,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OUT_DIR="${1:-dist}"
+VERSION="${VERSION:-0.2.0}"
 APP="$OUT_DIR/DeployHawk.app"
 
 echo "▸ Building release binary..."
@@ -29,7 +30,7 @@ if [ -f assets/AppIcon.icns ]; then
 fi
 cp assets/menubar-rocket.png "$APP/Contents/Resources/menubar-rocket.png"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -45,7 +46,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2.0</string>
+    <string>${VERSION}</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleIconFile</key>
@@ -64,10 +65,14 @@ codesign --force --deep --sign - "$APP"
 
 # Install to /Applications: Notification Center resolves icons through the
 # LaunchServices registration, so the app needs a stable path.
-INSTALL_APP="/Applications/DeployHawk.app"
-rm -rf "$INSTALL_APP"
-ditto "$APP" "$INSTALL_APP"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$INSTALL_APP"
-
-echo "✅ Done: $INSTALL_APP (build artifact: $APP)"
-echo "   Launch with: open $INSTALL_APP"
+# Skipped in CI (release workflow only needs the dist bundle).
+if [ "${CI:-}" != "true" ]; then
+    INSTALL_APP="/Applications/DeployHawk.app"
+    rm -rf "$INSTALL_APP"
+    ditto "$APP" "$INSTALL_APP"
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$INSTALL_APP"
+    echo "✅ Done: $INSTALL_APP (build artifact: $APP)"
+    echo "   Launch with: open $INSTALL_APP"
+else
+    echo "✅ Done (CI): $APP"
+fi
