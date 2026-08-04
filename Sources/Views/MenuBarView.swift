@@ -9,8 +9,16 @@ struct MenuBarView: View {
     @AppStorage("sortOrder") private var sortOrder: SortOrder = .recent
     @AppStorage("compactMode") private var compactMode = false
     @State private var searchText = ""
-    /// Empty set = show all providers.
-    @State private var providerFilter: Set<ProviderKind> = []
+    /// Empty = show all providers. Persisted as comma-joined raw values.
+    @AppStorage("providerFilter") private var providerFilterRaw = ""
+
+    private var providerFilter: Set<ProviderKind> {
+        Set(providerFilterRaw.split(separator: ",").compactMap { ProviderKind(rawValue: String($0)) })
+    }
+
+    private func setProviderFilter(_ filter: Set<ProviderKind>) {
+        providerFilterRaw = filter.map(\.rawValue).sorted().joined(separator: ",")
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -142,7 +150,7 @@ struct MenuBarView: View {
                     }
                     Spacer()
                     if !providerFilter.isEmpty {
-                        Button("All") { providerFilter = [] }
+                        Button("All") { setProviderFilter([]) }
                             .buttonStyle(.borderless)
                             .font(.caption2)
                     }
@@ -214,11 +222,13 @@ struct MenuBarView: View {
         let count = store.projects.filter { $0.provider == kind }.count
         return Button {
             // Tap toggles; selecting the only remaining filter clears back to All.
+            var filter = providerFilter
             if isSelected {
-                providerFilter.remove(kind)
+                filter.remove(kind)
             } else {
-                providerFilter.insert(kind)
+                filter.insert(kind)
             }
+            setProviderFilter(filter)
         } label: {
             HStack(spacing: 4) {
                 ProviderIcon(kind: kind)

@@ -46,6 +46,8 @@ let projects = [
          branch: "main", message: "Rewrite quickstart guide", ago: 9000, duration: 51),
     item(.render, "worker-queue", .building,
          message: "Deploy triggered via API", ago: 12, duration: 12, building: true),
+    item(.github, "deployhawk", .success, detail: "Release",
+         branch: "main", message: "v0.3.0", ago: 600, duration: 312),
 ]
 
 let building = projects.filter { $0.state == .building }.count
@@ -70,8 +72,8 @@ let header = HStack(spacing: 8) {
 
 // Provider filter chips — mirrors MenuBarView.providerChip
 let chipData: [(ProviderKind, Int)] = [
-    (.cloudflare, 2), (.vercel, 1), (.railway, 1),
-    (.hetzner, 1), (.netlify, 1), (.render, 1)
+    (.cloudflare, 2), (.vercel, 1), (.railway, 1), (.hetzner, 1),
+    (.netlify, 1), (.render, 1), (.github, 1), (.fly, 1)
 ]
 let chips = HStack(spacing: 6) {
     ForEach(chipData, id: \.0) { kind, count in
