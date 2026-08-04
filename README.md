@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A native macOS menu bar app that watches all your deployments at once.</b><br>
-  Cloudflare, Vercel, Railway, Hetzner, Netlify, Render, Fly.io, GitHub Actions — one list, live status, native notifications.
+  Cloudflare, Vercel, Railway, Hetzner, Netlify, Render, Fly.io, GitHub Actions, DigitalOcean — one list, live status, native notifications.
 </p>
 
 <p align="center">
@@ -31,13 +31,13 @@ Shipping to Cloudflare Pages, a couple of Workers, a Vercel site, a Railway serv
 
 ## Features
 
-- **🌐 Eight providers, one list** — Cloudflare (Workers + Pages), Vercel, Railway, Hetzner Cloud, Netlify, Render, Fly.io, GitHub Actions workflow runs. Every project, service and server with real brand logos, live status, and per-provider filter chips.
+- **🌐 Nine providers, one list** — Cloudflare (Workers + Pages), Vercel, Railway, Hetzner Cloud, Netlify, Render, Fly.io, GitHub Actions workflow runs, DigitalOcean App Platform. Every project, service and server with real brand logos, live status, and per-provider filter chips.
 - **🔔 Native notifications** — the moment a build succeeds or fails, with branch and build time. Instant Worker uploads (which never show a "building" state) are detected too. Per-project mute when something gets noisy.
 - **⚡ A menu bar that talks** — pulsing orange badge while builds run, red count on failures, a green tick after instant deploys. Adaptive polling: 5-second refresh while anything is building, relaxed when idle.
 - **🛠 Act, don't just watch** — retry failed deployments, roll back to a previous deployment or Worker version, restart Railway services, power Hetzner servers on/off, trigger Netlify builds — from the menu bar, with confirmation on the destructive ones.
 - **🔍 Deployment drill-down** — commit details, build command, per-deployment preview URLs, and **inline build logs** for Cloudflare Pages. No dashboard tab needed.
 - **📈 Server vitals** — Hetzner servers get a metrics grid: CPU, network in/out, disk read/write sparklines for the last hour, plus IPs, specs, OS and datacenter.
-- **🔑 Zero-paste setup** — detects provider CLIs you're already logged into (wrangler, vercel, netlify, railway, hcloud, gh, flyctl) and connects with one click. Wrangler's rotating OAuth session is re-read automatically. Pasted tokens live in the macOS Keychain, never in plaintext.
+- **🔑 Zero-paste setup** — detects provider CLIs you're already logged into (wrangler, vercel, netlify, railway, hcloud, gh, flyctl, doctl) and connects with one click. Wrangler's rotating OAuth session is re-read automatically. Pasted tokens live in the macOS Keychain, never in plaintext.
 - **🖥 Native and lightweight** — SwiftUI, zero dependencies, no Electron, no telemetry. Built-in update check against GitHub releases.
 
 ## Install
@@ -69,6 +69,7 @@ Click the 🚀 in the menu bar → gear icon. Anything you're logged into via CL
 | Render | dashboard.render.com → Account Settings → API Keys | Service deploys | Deploy latest, rollback |
 | Fly.io | `fly tokens create` (or be logged into flyctl) | App status + release history | — |
 | GitHub Actions | github.com/settings/tokens with repo scope (or gh CLI) | Workflow runs across recent repos | Re-run failed workflows |
+| DigitalOcean | cloud.digitalocean.com → API → Tokens (or doctl) | App Platform apps + deployments | Deploy, retry |
 
 ## Security
 
