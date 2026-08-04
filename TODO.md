@@ -54,11 +54,19 @@ Inspired by MenuFlare (menuflare.net), boilerplate from ../SessionHawk.
 - [x] Inline build logs (Pages history/logs endpoint), monospaced, copyable
 - [x] Keychain prompt fix (in-memory token cache) + view-body IO freeze fix
 
+## Done (round 6 — evolution loop 2026-08-04)
+- [x] CI release automation: tag push → macOS runner → build, zip, GitHub release (proved with v0.3.0)
+- [x] GitHub Actions provider — workflow runs across recent repos, re-run failures, gh CLI import
+- [x] Fly.io provider — app status + release history via GraphQL, flyctl import
+- [x] Railway service-level granularity (one row per service, per-service deployments/restart)
+- [x] Provider filter persists across launches
+- [x] Hetzner metrics grid (CPU, net in/out, disk r/w) + server facts
+- [x] README/screenshots refreshed for 8 providers; LinkedIn + OG social cards in docs/social
+
 ## Next
-- [ ] Verify each provider end-to-end with real tokens (Cloudflare, Vercel, Railway, Hetzner, Netlify, Render) — NEEDS TOKENS
-- [ ] Railway: service-level granularity (project → services → deployments per environment)
-- [ ] Hetzner: CPU/traffic metrics in detail view
-- [ ] More providers: Fly.io, GitHub Actions, DigitalOcean App Platform
+- [ ] Verify newer providers end-to-end with real tokens (Vercel, Railway, Netlify, Render, Fly, Hetzner) — NEEDS TOKENS
+- [ ] More providers: DigitalOcean App Platform, AWS Amplify
+- [ ] README GIF recorded from demo mode
 - [x] Renamed FlareHawk → DeployHawk (provider-neutral), rocket icon
 - [x] Public repo https://github.com/jcsuen/deployhawk + README + PolyForm license + install.sh
 - [x] v0.1.0 release with DeployHawk.zip — https://github.com/jcsuen/deployhawk/releases/tag/v0.1.0

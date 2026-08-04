@@ -54,6 +54,11 @@ struct RailwayProvider: ProviderClient {
             let id: String
             let name: String
             let updatedAt: Date?
+            let services: Connection<Service>?
+        }
+        struct Service: Decodable {
+            let id: String
+            let name: String
         }
     }
 
@@ -86,9 +91,12 @@ struct RailwayProvider: ProviderClient {
         }
     }
 
-    private func latestDeployment(projectId: String, count: Int = 1) async throws -> [DeploymentsData.Deployment] {
+    private func latestDeployment(
+        projectId: String, serviceId: String? = nil, count: Int = 1
+    ) async throws -> [DeploymentsData.Deployment] {
+        let service = serviceId.map { ", serviceId: \"\($0)\"" } ?? ""
         let gql = """
-        query { deployments(first: \(count), input: { projectId: "\(projectId)" }) {
+        query { deployments(first: \(count), input: { projectId: "\(projectId)"\(service) }) {
             edges { node { id status createdAt staticUrl url meta } } } }
         """
         return try await query(gql, as: DeploymentsData.self).deployments.edges.map(\.node)
@@ -102,27 +110,44 @@ struct RailwayProvider: ProviderClient {
     }
 
     func projects() async throws -> [ProjectItem] {
-        let gql = "query { projects { edges { node { id name updatedAt } } } }"
+        let gql = """
+        query { projects { edges { node { id name updatedAt
+            services { edges { node { id name } } } } } }
+        """
         let projects = try await query(gql, as: ProjectsData.self).projects.edges.map(\.node)
 
+        // One row per service; project-level fallback when a project has none.
+        var targets: [(project: ProjectsData.Project, service: ProjectsData.Service?)] = []
+        for project in projects {
+            let services = project.services?.edges.map(\.node) ?? []
+            if services.isEmpty {
+                targets.append((project, nil))
+            } else {
+                targets += services.map { (project, $0) }
+            }
+        }
+
         return try await withThrowingTaskGroup(of: ProjectItem.self) { group in
-            for project in projects {
+            for target in targets {
                 group.addTask {
-                    let deployment = (try? await latestDeployment(projectId: project.id))?.first
+                    let deployment = (try? await latestDeployment(
+                        projectId: target.project.id, serviceId: target.service?.id))?.first
+                    var meta = ["projectId": target.project.id]
+                    if let service = target.service { meta["serviceId"] = service.id }
                     return ProjectItem(
                         providerAccountId: account.id,
                         provider: .railway,
-                        name: project.name,
-                        detail: nil,
+                        name: target.service?.name ?? target.project.name,
+                        detail: target.service != nil ? target.project.name : nil,
                         state: deployment?.deployState ?? .unknown,
-                        lastActivity: deployment?.createdAt ?? project.updatedAt,
+                        lastActivity: deployment?.createdAt ?? target.project.updatedAt,
                         branch: deployment?.meta?.branch,
                         commitMessage: deployment?.meta?.commitMessage,
                         buildStart: deployment?.createdAt,
                         buildDuration: nil,
                         previewURL: (deployment?.staticUrl).map { "https://\($0)" } ?? deployment?.url,
-                        dashboardURL: URL(string: "https://railway.app/project/\(project.id)"),
-                        meta: ["projectId": project.id]
+                        dashboardURL: URL(string: "https://railway.app/project/\(target.project.id)"),
+                        meta: meta
                     )
                 }
             }
@@ -134,7 +159,8 @@ struct RailwayProvider: ProviderClient {
 
     func deployments(for project: ProjectItem) async throws -> [DeploymentInfo] {
         guard let projectId = project.meta["projectId"] else { return [] }
-        return try await latestDeployment(projectId: projectId, count: 20).map { d in
+        return try await latestDeployment(
+            projectId: projectId, serviceId: project.meta["serviceId"], count: 20).map { d in
             DeploymentInfo(
                 id: d.id,
                 state: d.deployState,
@@ -165,7 +191,8 @@ struct RailwayProvider: ProviderClient {
     /// Restart the latest deployment's containers without rebuilding.
     func perform(actionId: String, project: ProjectItem) async throws {
         guard actionId == "restart", let projectId = project.meta["projectId"] else { throw ProviderError.unsupported }
-        guard let latest = try await latestDeployment(projectId: projectId).first else {
+        guard let latest = try await latestDeployment(
+            projectId: projectId, serviceId: project.meta["serviceId"]).first else {
             throw ProviderError.message("No deployment to restart")
         }
         _ = try await query(
