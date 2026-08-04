@@ -263,6 +263,107 @@ guard let detailImage = detailRenderer.nsImage,
 try! detailPng.write(to: URL(fileURLWithPath: "docs/screenshots/server-detail.png"))
 print("wrote docs/screenshots/server-detail.png")
 
+// MARK: - LinkedIn social card (1200x627)
+
+// Shorter list variant so the panel fits a landscape card without cropping.
+let promoList = VStack(spacing: 0) {
+    header
+    Divider()
+    chips
+    Divider()
+    VStack(spacing: 6) {
+        ForEach(Array(projects.prefix(5))) { project in
+            ProjectRowView(project: project, compact: false)
+        }
+    }
+    .padding(10)
+}
+.frame(width: 360)
+.background(Color(nsColor: .windowBackgroundColor))
+.environment(\.colorScheme, .dark)
+
+let promoListRenderer = ImageRenderer(content: promoList)
+promoListRenderer.scale = 2
+guard let promoListImage = promoListRenderer.nsImage else { fatalError("promo list render failed") }
+
+let appIcon = NSImage(contentsOfFile: "assets/icon_1024.png")
+
+let providerLogos = HStack(spacing: 14) {
+    ForEach(ProviderKind.allCases) { kind in
+        if let logo = ProviderIcon.logo(for: kind) {
+            Image(nsImage: logo)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 22, height: 22)
+                .foregroundStyle(.white)
+        }
+    }
+}
+
+let promo = ZStack {
+    LinearGradient(
+        colors: [
+            Color(red: 0.13, green: 0.12, blue: 0.30),
+            Color(red: 0.05, green: 0.05, blue: 0.10)
+        ],
+        startPoint: .topLeading, endPoint: .bottomTrailing)
+
+    HStack(spacing: 44) {
+        VStack(alignment: .leading, spacing: 18) {
+            if let appIcon {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .frame(width: 88, height: 88)
+            }
+            Text("DeployHawk")
+                .font(.system(size: 46, weight: .bold))
+                .foregroundStyle(.white)
+            Text("Every deploy. Every provider.\nOne menu bar.")
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(.white.opacity(0.75))
+                .lineSpacing(4)
+            providerLogos
+                .padding(.top, 6)
+            Text("github.com/jcsuen/deployhawk")
+                .font(.system(size: 15, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.5))
+                .padding(.top, 10)
+        }
+        Spacer(minLength: 0)
+        HStack(alignment: .top, spacing: 18) {
+            Image(nsImage: promoListImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 540)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.5), radius: 18, y: 8)
+            Image(nsImage: detailImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 470)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.5), radius: 18, y: 8)
+                .offset(y: 36)
+        }
+    }
+    .padding(.horizontal, 52)
+    .padding(.vertical, 40)
+}
+.frame(width: 1200, height: 627)
+.environment(\.colorScheme, .dark)
+
+let promoRenderer = ImageRenderer(content: promo)
+promoRenderer.scale = 2
+guard let promoImage = promoRenderer.nsImage,
+      let promoTiff = promoImage.tiffRepresentation,
+      let promoRep = NSBitmapImageRep(data: promoTiff),
+      let promoPng = promoRep.representation(using: .png, properties: [:]) else {
+    fatalError("promo render failed")
+}
+try! FileManager.default.createDirectory(atPath: "docs/social", withIntermediateDirectories: true)
+try! promoPng.write(to: URL(fileURLWithPath: "docs/social/deployhawk-linkedin.png"))
+print("wrote docs/social/deployhawk-linkedin.png")
+
 }
 }
 
