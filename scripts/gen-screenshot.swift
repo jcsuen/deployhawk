@@ -68,6 +68,40 @@ let header = HStack(spacing: 8) {
 .padding(.horizontal, 12)
 .padding(.vertical, 10)
 
+// Provider filter chips — mirrors MenuBarView.providerChip
+let chipData: [(ProviderKind, Int)] = [
+    (.cloudflare, 2), (.vercel, 1), (.railway, 1),
+    (.hetzner, 1), (.netlify, 1), (.render, 1)
+]
+let chips = HStack(spacing: 6) {
+    ForEach(chipData, id: \.0) { kind, count in
+        HStack(spacing: 4) {
+            ProviderIcon(kind: kind)
+            Text("\(count)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(Color.primary.opacity(0.06), in: Capsule())
+    }
+    Spacer()
+}
+.padding(.horizontal, 12)
+.padding(.vertical, 6)
+
+let search = HStack(spacing: 6) {
+    Image(systemName: "magnifyingglass")
+        .foregroundStyle(.secondary)
+        .font(.caption)
+    Text("Filter projects")
+        .font(.callout)
+        .foregroundStyle(Color.secondary.opacity(0.6))
+    Spacer()
+}
+.padding(.horizontal, 12)
+.padding(.vertical, 6)
+
 let list = VStack(spacing: 6) {
     ForEach(projects) { project in
         ProjectRowView(project: project, compact: false)
@@ -89,6 +123,10 @@ let footer = HStack {
 
 let content = VStack(spacing: 0) {
     header
+    Divider()
+    chips
+    Divider()
+    search
     Divider()
     list
     Divider()
