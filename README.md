@@ -26,13 +26,14 @@ Shipping to Cloudflare Pages, a couple of Workers, a Vercel site, a Railway serv
 
 ## Features
 
-- **🌐 Six providers, one list** — Cloudflare (Workers + Pages), Vercel, Railway, Hetzner Cloud, Netlify, Render. Every project, service and server with live status.
-- **🔔 Native notifications** — the moment a build succeeds or fails, with branch and build time. Per-project mute when something gets noisy.
-- **⚡ Adaptive polling** — 5-second refresh while anything is building, relaxed when idle. The menu bar icon shows a live building count and a red failure count without opening anything.
+- **🌐 Six providers, one list** — Cloudflare (Workers + Pages), Vercel, Railway, Hetzner Cloud, Netlify, Render. Every project, service and server with real brand logos, live status, and per-provider filter chips.
+- **🔔 Native notifications** — the moment a build succeeds or fails, with branch and build time. Instant Worker uploads (which never show a "building" state) are detected too. Per-project mute when something gets noisy.
+- **⚡ A menu bar that talks** — pulsing orange badge while builds run, red count on failures, a green tick after instant deploys. Adaptive polling: 5-second refresh while anything is building, relaxed when idle.
 - **🛠 Act, don't just watch** — retry failed deployments, roll back to a previous deployment or Worker version, restart Railway services, power Hetzner servers on/off, trigger Netlify builds — from the menu bar, with confirmation on the destructive ones.
 - **🔍 Deployment drill-down** — commit details, build command, per-deployment preview URLs, and **inline build logs** for Cloudflare Pages. No dashboard tab needed.
+- **📈 Server vitals** — Hetzner servers get a metrics grid: CPU, network in/out, disk read/write sparklines for the last hour, plus IPs, specs, OS and datacenter.
 - **🔑 Zero-paste setup** — detects provider CLIs you're already logged into (wrangler, vercel, netlify, railway, hcloud) and connects with one click. Wrangler's rotating OAuth session is re-read automatically. Pasted tokens live in the macOS Keychain, never in plaintext.
-- **🖥 Native and lightweight** — SwiftUI, zero dependencies, no Electron, no telemetry.
+- **🖥 Native and lightweight** — SwiftUI, zero dependencies, no Electron, no telemetry. Built-in update check against GitHub releases.
 
 ## Install
 
@@ -74,6 +75,8 @@ Click the 🚀 in the menu bar → gear icon. Anything you're logged into via CL
 swift build && swift run        # dev run (notifications fall back to osascript)
 ./scripts/make-app-bundle.sh    # release .app → /Applications
 ```
+
+Handy env vars: `DEPLOYHAWK_DEMO=1` runs a scripted deploy lifecycle with fake projects (great for seeing the notifications and menu bar animations without deploying anything); `DEPLOYHAWK_FAKE_UPDATE=1` forces the update banner.
 
 See `CLAUDE.md` for architecture notes. Adding a provider is one file conforming to `ProviderClient` plus a `ProviderKind` case.
 
