@@ -150,5 +150,150 @@ try! FileManager.default.createDirectory(atPath: "docs/screenshots", withInterme
 try! png.write(to: URL(fileURLWithPath: "docs/screenshots/projects.png"))
 print("wrote docs/screenshots/projects.png")
 
+// MARK: - Server detail render (Hetzner metrics)
+
+// Deterministic plausible series — no randomness so re-renders are stable.
+func series(_ base: Double, amp: Double, spike: Int? = nil, spikeValue: Double = 0) -> [Double] {
+    (0..<60).map { index in
+        var value = base + amp * (sin(Double(index) / 6.5) + 0.4 * sin(Double(index) / 2.3))
+        if let spike, abs(index - spike) < 3 { value += spikeValue * (3 - Double(abs(index - spike))) / 3 }
+        return max(value, 0)
+    }
 }
+
+let metrics: [MetricSeries] = [
+    MetricSeries(name: "CPU", unit: .percent, values: series(23, amp: 8, spike: 48, spikeValue: 41)),
+    MetricSeries(name: "Net in", unit: .bytesPerSecond, values: series(180_000, amp: 90_000)),
+    MetricSeries(name: "Net out", unit: .bytesPerSecond, values: series(2_400_000, amp: 900_000, spike: 48, spikeValue: 4_000_000)),
+    MetricSeries(name: "Disk read", unit: .bytesPerSecond, values: series(60_000, amp: 40_000)),
+    MetricSeries(name: "Disk write", unit: .bytesPerSecond, values: series(340_000, amp: 150_000, spike: 20, spikeValue: 800_000))
+]
+
+let serverRows: [(String, String)] = [
+    ("IPv4", "95.216.38.112"),
+    ("IPv6", "2a01:4f9:2b:1a4::1"),
+    ("Type", "cx32 — 4 vCPU · 8 GB RAM · 80 GB disk"),
+    ("Image", "Ubuntu 24.04"),
+    ("Datacenter", "fsn1"),
+    ("Created", "Mar 2, 2025")
+]
+
+let detailHeader = HStack(spacing: 8) {
+    Image(systemName: "chevron.left").foregroundStyle(.secondary)
+    ProviderIcon(kind: .hetzner)
+    VStack(alignment: .leading, spacing: 1) {
+        Text("db1").font(.headline)
+        Text("cx32 · fsn1").font(.caption2).foregroundStyle(.secondary)
+    }
+    Spacer()
+    Image(systemName: "bell").foregroundStyle(.secondary)
+    StatusBadge(state: .running)
+}
+.padding(.horizontal, 12)
+.padding(.vertical, 10)
+
+let actionChips = HStack(spacing: 8) {
+    Label("Open Site", systemImage: "safari")
+        .font(.caption)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .overlay(Capsule().strokeBorder(.quaternary, lineWidth: 1))
+    Spacer()
+    Label("Reboot", systemImage: "arrow.clockwise.circle")
+        .font(.caption2)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+    Label("Power Off", systemImage: "power")
+        .font(.caption2)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+}
+
+let serverSection = VStack(alignment: .leading, spacing: 6) {
+    Text("Server").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+    ForEach(serverRows, id: \.0) { row in
+        HStack(spacing: 6) {
+            Text(row.0).font(.caption).foregroundStyle(.secondary)
+                .frame(width: 80, alignment: .leading)
+            Text(row.1).font(.caption)
+            Spacer()
+        }
+    }
+    Text("Last hour").font(.caption2).foregroundStyle(.tertiary).padding(.top, 2)
+    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
+        ForEach(metrics) { metric in
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(metric.name).font(.caption2).foregroundStyle(.secondary)
+                    Spacer()
+                    Text(metric.latestFormatted)
+                        .font(.caption2.monospacedDigit().weight(.medium))
+                }
+                DemoSparkline(values: metric.values).frame(height: 28)
+            }
+            .padding(6)
+            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+        }
+    }
+}
+.padding(8)
+.background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+.overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary, lineWidth: 1))
+
+let detailContent = VStack(spacing: 0) {
+    detailHeader
+    Divider()
+    VStack(alignment: .leading, spacing: 8) {
+        actionChips
+        serverSection
+    }
+    .padding(12)
+}
+.frame(width: 360)
+.background(Color(nsColor: .windowBackgroundColor))
+.environment(\.colorScheme, .dark)
+
+let detailRenderer = ImageRenderer(content: detailContent)
+detailRenderer.scale = 2
+guard let detailImage = detailRenderer.nsImage,
+      let detailTiff = detailImage.tiffRepresentation,
+      let detailRep = NSBitmapImageRep(data: detailTiff),
+      let detailPng = detailRep.representation(using: .png, properties: [:]) else {
+    fatalError("detail render failed")
+}
+try! detailPng.write(to: URL(fileURLWithPath: "docs/screenshots/server-detail.png"))
+print("wrote docs/screenshots/server-detail.png")
+
+}
+}
+
+/// Local sparkline copy — DetailView.swift can't be compiled standalone.
+struct DemoSparkline: View {
+    let values: [Double]
+
+    var body: some View {
+        GeometryReader { geo in
+            let maxValue = max(values.max() ?? 1, 1)
+            let stepX = geo.size.width / CGFloat(max(values.count - 1, 1))
+            let points = values.enumerated().map { index, value in
+                CGPoint(
+                    x: CGFloat(index) * stepX,
+                    y: geo.size.height * (1 - CGFloat(value / maxValue) * 0.9))
+            }
+            let line = Path { path in
+                guard let first = points.first else { return }
+                path.move(to: first)
+                for point in points.dropFirst() { path.addLine(to: point) }
+            }
+            let area = Path { path in
+                guard let first = points.first, let last = points.last else { return }
+                path.move(to: CGPoint(x: first.x, y: geo.size.height))
+                path.addLine(to: first)
+                for point in points.dropFirst() { path.addLine(to: point) }
+                path.addLine(to: CGPoint(x: last.x, y: geo.size.height))
+                path.closeSubpath()
+            }
+            area.fill(Color.accentColor.opacity(0.15))
+            line.stroke(Color.accentColor, lineWidth: 1.5)
+        }
+    }
 }
