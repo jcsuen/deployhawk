@@ -17,6 +17,10 @@
 </p>
 
 <p align="center">
+  <img src="docs/screenshots/demo.gif" width="360" alt="DeployHawk watching builds live">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/projects.png" width="340" alt="DeployHawk project list">
   <img src="docs/screenshots/server-detail.png" width="340" alt="Hetzner server detail with CPU, network and disk metrics">
 </p>

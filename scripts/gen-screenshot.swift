@@ -366,6 +366,85 @@ try! FileManager.default.createDirectory(atPath: "docs/social", withIntermediate
 try! promoPng.write(to: URL(fileURLWithPath: "docs/social/deployhawk-linkedin.png"))
 print("wrote docs/social/deployhawk-linkedin.png")
 
+// MARK: - Animated demo GIF for the README
+
+// Storyline: a build ticks up, succeeds, then another project fails.
+func frameProjects(_ step: Int) -> [ProjectItem] {
+    let buildSeconds = 43 + step
+    let cfBuilding = step < 8
+    let railwayFailed = step >= 12
+    var rows: [ProjectItem] = []
+    rows.append(item(.cloudflare, "marketing-site", cfBuilding ? .building : .success,
+                     detail: "Pages", branch: "main", message: "Add pricing page",
+                     ago: Double(buildSeconds),
+                     duration: cfBuilding ? Double(buildSeconds) : 51,
+                     building: cfBuilding))
+    rows.append(item(.vercel, "dashboard", .success, branch: "main",
+                     message: "Fix auth redirect loop", ago: 1260, duration: 34))
+    rows.append(item(.railway, "postgres-sync", railwayFailed ? .failure : .building,
+                     branch: "main", message: "Bump pg driver to 8.12",
+                     ago: Double(20 + step), duration: railwayFailed ? 24 : Double(20 + step),
+                     building: !railwayFailed))
+    rows.append(item(.cloudflare, "api-gateway", .running, detail: "Worker", ago: 172_800))
+    rows.append(item(.github, "deployhawk", .success, detail: "Release",
+                     branch: "main", message: "v0.3.0", ago: 600, duration: 312))
+    return rows
+}
+
+func renderFrame(_ step: Int) -> NSImage? {
+    let rows = frameProjects(step)
+    let building = rows.filter { $0.state == .building }.count
+    let failures = rows.filter { $0.state == .failure }.count
+    let frameHeader = HStack(spacing: 8) {
+        Text("DeployHawk").font(.headline)
+        if building > 0 {
+            Label("\(building)", systemImage: "arrow.triangle.2.circlepath")
+                .font(.caption.bold()).foregroundStyle(.orange)
+        }
+        if failures > 0 {
+            Label("\(failures)", systemImage: "xmark.circle")
+                .font(.caption.bold()).foregroundStyle(.red)
+        }
+        Spacer()
+        Image(systemName: "arrow.up.arrow.down").foregroundStyle(.secondary)
+        Image(systemName: "arrow.clockwise").foregroundStyle(.secondary)
+        Image(systemName: "gearshape").foregroundStyle(.secondary)
+    }
+    .padding(.horizontal, 12).padding(.vertical, 10)
+
+    let frame = VStack(spacing: 0) {
+        frameHeader
+        Divider()
+        VStack(spacing: 6) {
+            ForEach(rows) { ProjectRowView(project: $0, compact: false) }
+        }
+        .padding(10)
+    }
+    .frame(width: 360)
+    .background(Color(nsColor: .windowBackgroundColor))
+    .environment(\.colorScheme, .dark)
+
+    let renderer = ImageRenderer(content: frame)
+    renderer.scale = 2
+    return renderer.nsImage
+}
+
+let gifURL = URL(fileURLWithPath: "docs/screenshots/demo.gif")
+let frameCount = 16
+if let destination = CGImageDestinationCreateWithURL(gifURL as CFURL, "com.compuserve.gif" as CFString, frameCount, nil) {
+    let gifProperties = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary
+    CGImageDestinationSetProperties(destination, gifProperties)
+    let frameProperties = [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 0.5]] as CFDictionary
+    for step in 0..<frameCount {
+        guard let image = renderFrame(step),
+              let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { continue }
+        CGImageDestinationAddImage(destination, cg, frameProperties)
+    }
+    if CGImageDestinationFinalize(destination) {
+        print("wrote docs/screenshots/demo.gif")
+    }
+}
+
 }
 }
 
