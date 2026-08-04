@@ -46,6 +46,9 @@ enum CLIImporter {
             CLICredentialSource(
                 kind: .github, cliName: "gh CLI",
                 path: home(".config/gh/hosts.yml"), live: false),
+            CLICredentialSource(
+                kind: .fly, cliName: "flyctl",
+                path: home(".fly/config.yml"), live: false),
         ]
     }
 
@@ -74,6 +77,10 @@ enum CLIImporter {
         case .github:
             // gh CLI hosts.yml: `oauth_token: gho_…` (unquoted YAML)
             return firstMatch("(?m)^\\s*oauth_token:\\s*(\\S+)", in: content)
+        case .fly:
+            // flyctl config.yml: `access_token: FlyV1 …` (may contain spaces)
+            return firstMatch("(?m)^\\s*access_token:\\s*\"?([^\"\\n]+)\"?", in: content)?
+                .trimmingCharacters(in: .whitespaces)
         case .render:
             return nil
         }

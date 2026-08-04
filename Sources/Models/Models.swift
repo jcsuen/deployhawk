@@ -10,6 +10,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     case netlify
     case render
     case github
+    case fly
 
     var id: String { rawValue }
 
@@ -22,6 +23,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .netlify: return "Netlify"
         case .render: return "Render"
         case .github: return "GitHub"
+        case .fly: return "Fly.io"
         }
     }
 
@@ -34,6 +36,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .netlify: return "diamond.fill"
         case .render: return "cube.fill"
         case .github: return "chevron.left.forwardslash.chevron.right"
+        case .fly: return "airplane"
         }
     }
 
@@ -53,6 +56,8 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
             return "dashboard.render.com → Account Settings → API Keys."
         case .github:
             return "github.com/settings/tokens — classic token with repo scope (or just be logged into the gh CLI). Shows workflow runs across your recently pushed repos."
+        case .fly:
+            return "Run `fly tokens create org` (or be logged into flyctl). Shows app status and release history."
         }
     }
 }
