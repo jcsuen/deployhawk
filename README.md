@@ -43,6 +43,12 @@ Shipping to Cloudflare Pages, a couple of Workers, a Vercel site, a Railway serv
 ## Install
 
 ```bash
+brew install --cask jcsuen/tap/deployhawk
+```
+
+or:
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/jcsuen/deployhawk/main/install.sh | bash
 ```
 
