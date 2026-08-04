@@ -51,6 +51,7 @@ enum ProviderFactory {
         case .render: return RenderProvider(account: account, token: token)
         case .github: return GitHubProvider(account: account, token: token)
         case .fly: return FlyProvider(account: account, token: token)
+        case .digitalocean: return DigitalOceanProvider(account: account, token: token)
         }
     }
 }

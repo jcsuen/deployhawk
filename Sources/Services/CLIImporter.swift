@@ -49,6 +49,12 @@ enum CLIImporter {
             CLICredentialSource(
                 kind: .fly, cliName: "flyctl",
                 path: home(".fly/config.yml"), live: false),
+            CLICredentialSource(
+                kind: .digitalocean, cliName: "doctl",
+                path: home("Library/Application Support/doctl/config.yaml"), live: false),
+            CLICredentialSource(
+                kind: .digitalocean, cliName: "doctl",
+                path: home(".config/doctl/config.yaml"), live: false),
         ]
     }
 
@@ -81,6 +87,9 @@ enum CLIImporter {
             // flyctl config.yml: `access_token: FlyV1 …` (may contain spaces)
             return firstMatch("(?m)^\\s*access_token:\\s*\"?([^\"\\n]+)\"?", in: content)?
                 .trimmingCharacters(in: .whitespaces)
+        case .digitalocean:
+            // doctl config.yaml: `access-token: dop_v1_…`
+            return firstMatch("(?m)^\\s*access-token:\\s*(\\S+)", in: content)
         case .render:
             return nil
         }

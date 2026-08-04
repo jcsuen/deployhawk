@@ -11,6 +11,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     case render
     case github
     case fly
+    case digitalocean
 
     var id: String { rawValue }
 
@@ -24,6 +25,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .render: return "Render"
         case .github: return "GitHub"
         case .fly: return "Fly.io"
+        case .digitalocean: return "DigitalOcean"
         }
     }
 
@@ -37,6 +39,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .render: return "cube.fill"
         case .github: return "chevron.left.forwardslash.chevron.right"
         case .fly: return "airplane"
+        case .digitalocean: return "drop.fill"
         }
     }
 
@@ -58,6 +61,8 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
             return "github.com/settings/tokens — classic token with repo scope (or just be logged into the gh CLI). Shows workflow runs across your recently pushed repos."
         case .fly:
             return "Run `fly tokens create org` (or be logged into flyctl). Shows app status and release history."
+        case .digitalocean:
+            return "cloud.digitalocean.com → API → Generate New Token (read, plus write for deploy actions). Shows App Platform apps."
         }
     }
 }
