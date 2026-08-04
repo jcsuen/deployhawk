@@ -88,7 +88,7 @@ struct ProviderIcon: View {
     static func logo(for kind: ProviderKind) -> NSImage? {
         if let cached = cache[kind] { return cached }
         guard let url = logoURL(kind), let image = NSImage(contentsOf: url) else { return nil }
-        if kind == .vercel || kind == .railway || kind == .render {
+        if kind == .vercel || kind == .railway || kind == .render || kind == .github {
             image.isTemplate = true
         }
         cache[kind] = image

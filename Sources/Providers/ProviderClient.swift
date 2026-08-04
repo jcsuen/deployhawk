@@ -49,6 +49,7 @@ enum ProviderFactory {
         case .hetzner: return HetznerProvider(account: account, token: token)
         case .netlify: return NetlifyProvider(account: account, token: token)
         case .render: return RenderProvider(account: account, token: token)
+        case .github: return GitHubProvider(account: account, token: token)
         }
     }
 }

@@ -43,6 +43,9 @@ enum CLIImporter {
             CLICredentialSource(
                 kind: .hetzner, cliName: "hcloud CLI",
                 path: home(".config/hcloud/cli.toml"), live: false),
+            CLICredentialSource(
+                kind: .github, cliName: "gh CLI",
+                path: home(".config/gh/hosts.yml"), live: false),
         ]
     }
 
@@ -68,6 +71,9 @@ enum CLIImporter {
             return jsonValue("token", in: content)
         case .hetzner:
             return tomlValue("token", in: content)
+        case .github:
+            // gh CLI hosts.yml: `oauth_token: gho_…` (unquoted YAML)
+            return firstMatch("(?m)^\\s*oauth_token:\\s*(\\S+)", in: content)
         case .render:
             return nil
         }

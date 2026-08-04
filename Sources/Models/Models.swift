@@ -9,6 +9,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     case hetzner
     case netlify
     case render
+    case github
 
     var id: String { rawValue }
 
@@ -20,6 +21,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .hetzner: return "Hetzner"
         case .netlify: return "Netlify"
         case .render: return "Render"
+        case .github: return "GitHub"
         }
     }
 
@@ -31,6 +33,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         case .hetzner: return "server.rack"
         case .netlify: return "diamond.fill"
         case .render: return "cube.fill"
+        case .github: return "chevron.left.forwardslash.chevron.right"
         }
     }
 
@@ -48,6 +51,8 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
             return "app.netlify.com/user/applications → Personal access tokens."
         case .render:
             return "dashboard.render.com → Account Settings → API Keys."
+        case .github:
+            return "github.com/settings/tokens — classic token with repo scope (or just be logged into the gh CLI). Shows workflow runs across your recently pushed repos."
         }
     }
 }
