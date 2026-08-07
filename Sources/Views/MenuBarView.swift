@@ -6,7 +6,9 @@ struct MenuBarView: View {
     var updateChecker: UpdateChecker? = nil
     @State private var selectedProject: ProjectItem?
     @State private var showSettings = false
-    @AppStorage("sortOrder") private var sortOrder: SortOrder = .recent
+    // Status is the default: attention states (failed, building) float to the
+    // top, healthy ones follow, idle (stopped/canceled) sink to the bottom.
+    @AppStorage("sortOrder") private var sortOrder: SortOrder = .status
     @AppStorage("compactMode") private var compactMode = false
     @State private var searchText = ""
     /// Empty = show all providers. Persisted as comma-joined raw values.
